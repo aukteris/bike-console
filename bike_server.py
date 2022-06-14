@@ -1,6 +1,6 @@
 from datetime import datetime
 import RPi.GPIO as GPIO
-
+import json
 import asyncio
 import websockets
 
@@ -20,9 +20,14 @@ class rpm_meter:
             timediffsec = timediff.total_seconds()
 
             rpm = 60 / (timediffsec * 4)
+
+            data = {
+                "rpm": rpm,
+                "time_diff_sec": timediffsec
+            }
             
             #asyncio.run(self.transmit(rpm))
-            asyncio.run(self.connectedSocket.send(str(rpm)))
+            asyncio.run(self.connectedSocket.send(json.dumps(data)))
             
         self.lastReadTime = datetime.now()
 

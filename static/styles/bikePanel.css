@@ -3,3 +3,17 @@ html {
     color:#01558a;
     font-family: Helvetica Neue, Helvetica, sans-serif 
 }
+
+.tile {
+    float: left;
+    width: auto;
+    height: 100px;
+    font-size: 5em;
+    color: aquamarine;
+    border-radius: 19px;
+    border-color: rgb(0, 112, 93);
+    border-width: 1px;
+    border-style: solid;
+    padding: 0 16px 0 16px;
+    margin: 16px 16px 16px 16px;
+}
