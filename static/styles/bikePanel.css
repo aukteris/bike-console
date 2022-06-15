@@ -1,19 +1,48 @@
+@font-face {
+    font-family: digitalism;
+    src: url('digitalism.woff');
+}
+
 html {
-    background-color:#0a0007;
-    color:#01558a;
-    font-family: Helvetica Neue, Helvetica, sans-serif 
+    background-color:#aec8a8;
+    color:#272a2d;
+    font-family: digitalism 
 }
 
 .tile {
     float: left;
-    width: auto;
-    height: 100px;
-    font-size: 5em;
-    color: aquamarine;
+    width: 135px;
+    height: auto;
+    font-size: 4em;
+    color: #aec8a8;
     border-radius: 19px;
-    border-color: rgb(0, 112, 93);
-    border-width: 1px;
+    border-color: rgb(30, 36, 35);
+    border-width: 0px;
     border-style: solid;
-    padding: 0 16px 0 16px;
-    margin: 16px 16px 16px 16px;
+    padding: 20px 16px 0px 16px;
+    margin: 16px 16px 0px 16px;
+    text-align: right;
+    background-color: rgb(24, 31, 28);
+}
+
+.tile h4 {
+    position: absolute;
+    font-size: 12pt;
+    margin: -10px 0 0 0 ;
+}
+.tile.wide {
+    width: 334px;
+}
+
+.tile.timetile {
+    text-align: center;
+    font-size: 6em;
+}
+
+.tile span {
+
+}
+
+#time {
+    font-family: digitalism;
 }
