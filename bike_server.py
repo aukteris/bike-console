@@ -26,14 +26,9 @@ class rpm_meter:
                 "time_diff_sec": timediffsec
             }
             
-            #asyncio.run(self.transmit(rpm))
             asyncio.run(self.connectedSocket.send(json.dumps(data)))
             
         self.lastReadTime = datetime.now()
-
-    #async def transmit(self, rpm):
-        #async with websockets.connect("ws://minihome.dankurtz.local:8001") as websocket:
-            #await websocket.send(str(rpm));
 
 meter = rpm_meter()
 

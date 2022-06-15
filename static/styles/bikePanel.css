@@ -11,7 +11,7 @@ html {
 
 .tile {
     float: left;
-    width: 135px;
+    width: 151px;
     height: auto;
     font-size: 4em;
     color: #aec8a8;
@@ -20,7 +20,7 @@ html {
     border-width: 0px;
     border-style: solid;
     padding: 20px 16px 0px 16px;
-    margin: 16px 16px 0px 16px;
+    margin: 16px 8px 0px 8px;
     text-align: right;
     background-color: rgb(24, 31, 28);
 }
@@ -31,16 +31,20 @@ html {
     margin: -10px 0 0 0 ;
 }
 .tile.wide {
-    width: 334px;
+    width: 350px;
 }
 
 .tile.timetile {
     text-align: center;
-    font-size: 6em;
+    font-size: 1em;
 }
 
 .tile span {
 
+}
+
+.tile.timetile span {
+    font-size: 6em
 }
 
 #time {

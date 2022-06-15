@@ -7,7 +7,10 @@
         </script>
         <script src="{{ url_for('static',filename='bikePanel.js') }}"> </script>
         <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/bikePanel.css') }}">
+        <link rel="apple-touch-icon" href="{{ url_for('static',filename='images/bike.png') }}">
         <meta name="viewport" content="user-scalable=no,width=device-width,initial-scale=1.0">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     </head>
     <body>
         <div class="tile wide timetile">
@@ -16,7 +19,7 @@
         </div>
         <div class="tile wide timetile">
             <h4>Distance</h4>
-            <span id="miles">...</span>
+            <span id="miles">...</span>miles
         </div>
         <div class="tile">
             <h4>RPM</h4>
