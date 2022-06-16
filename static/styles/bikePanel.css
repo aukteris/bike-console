@@ -1,12 +1,142 @@
 @font-face {
-    font-family: digitalism;
-    src: url('digitalism.woff');
-}
+    font-family: 'LCD Normal';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD Normal'), url('LCD-N___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCD Ultra';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD Ultra'), url('LCD-U___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCD Light';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD Light'), url('LCD-L___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCD Bold';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD Bold'), url('LCD-BOLD.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCD2 Normal';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD2 Normal'), url('LCD2N___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono2 Normal';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono2 Normal'), url('LCDM2N__.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono Normal';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono Normal'), url('LCDMN___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'Digitalism Regular';
+    font-style: normal;
+    font-weight: normal;
+    src: local('Digitalism Regular'), url('digitalism.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCD2 Ultra';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD2 Ultra'), url('LCD2U___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono2 Ultra';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono2 Ultra'), url('LCDM2U__.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono Ultra';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono Ultra'), url('LCDMU___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCD2 Light';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD2 Light'), url('LCD2L___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono2 Light';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono2 Light'), url('LCDM2L__.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono Light';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono Light'), url('LCDML___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCD2 Bold';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCD2 Bold'), url('LCD2B___.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono2 Bold';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono2 Bold'), url('LCDM2B__.woff') format('woff');
+    }
+    
+
+    @font-face {
+    font-family: 'LCDMono Bold';
+    font-style: normal;
+    font-weight: normal;
+    src: local('LCDMono Bold'), url('LCDMB___.woff') format('woff');
+    }
 
 html {
-    background-color:#aec8a8;
-    color:#272a2d;
-    font-family: digitalism 
+    background-color:#1a2917;
+    color:#272d2c;
+    font-family: 'LCDMono Ultra' 
 }
 
 .tile {
@@ -29,6 +159,7 @@ html {
     position: absolute;
     font-size: 12pt;
     margin: -10px 0 0 0 ;
+    font-family: 'LCDMono Light';
 }
 .tile.wide {
     width: 350px;
@@ -40,13 +171,19 @@ html {
 }
 
 .tile span {
-
+    padding-top: 5px;
+    display: inline-block;
 }
 
 .tile.timetile span {
-    font-size: 6em
+    font-size: 5em
 }
 
-#time {
-    font-family: digitalism;
+.tile span#namerequest {
+    font-size: 16pt;
+}
+
+.questiontile {
+    display:none;
+    float:none;
 }
