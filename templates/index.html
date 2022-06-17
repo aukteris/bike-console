@@ -13,9 +13,10 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     </head>
     <body>
-        <div class="tile questiontile wide">
+        <div class="tile wide prompt" id="prompt"></div>
+        <div class="tile questiontile wide" id="getNameTile">
             <h4>Name</h4>
-            <span id="namerequest">Please provide:<input type="text" name="name" id="name" /><button>Save</button></span>
+            <span id="namerequest">Please provide:<input type="text" name="name" id="name" /><button onclick="saveName()">Save</button></span>
         </div>
         <div class="tile wide timetile">
             <h4>Time</h4>
@@ -32,6 +33,14 @@
         <div class="tile">
             <h4>MPH</h4>
             <span id="mph">...</span>
+        </div>
+        <div class="tile">
+            <h4>Avg RPM</h4>
+            <span id="arpm">...</span>
+        </div>
+        <div class="tile">
+            <h4>Avg MPH</h4>
+            <span id="amph">...</span>
         </div>
     </body>
 </html>
