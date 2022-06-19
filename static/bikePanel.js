@@ -6,6 +6,13 @@ let timeHistoryShort = [];
 let startTime = null;
 let totalRpms = 0;
 let totalMs = 0;
+let timeButtons = 0;
+let promptTimeout = null;
+let promptMessageQueue = [];
+const typeColorMap = {
+    "normal":"#aec8a8",
+    "alert":"#ec4d4d"
+};
 
 const historyLength = 20;
 const shortHistoryLength = 5;
@@ -103,27 +110,135 @@ function tick() {
     timeField.innerHTML = timeString;
 }
 
-function showPrompt(message, duration) {
-    promptElement = document.getElementById('prompt');
+function showPrompt(message, duration, type) {
+    promptData = [message,duration,type];
 
-    promptElement.innerHTML = message;
-    promptElement.style.display = "block";
-    promptElement.classList.add("openAnimation");
+    if (promptMessageQueue.length == 0) {
+        promptElement = document.getElementById('prompt');
 
-    setTimeout(removePrompt, duration);
+        promptElement.style.display = "block";
+        promptElement.classList.add("openAnimation");
+
+        promptTimeout = setTimeout(loopAllPromptMessages, 500);
+        setTimeout(() => {
+            promptElement = document.getElementById('prompt');
+            promptElement.classList.remove("openAnimation");
+        }, 1000)
+    }
+
+    promptMessageQueue.push(promptData);
 }
 
-function removePrompt() {
+function loopAllPromptMessages() {
+
+    promptData = promptMessageQueue[0];
+
     promptElement = document.getElementById('prompt');
 
-    promptElement.classList.remove("openAnimation");
-    promptElement.classList.add("closeAnimation");
+    promptElement.innerHTML = promptData[0]
+    promptElement.style.opacity = "100";
+    promptElement.style.color = typeColorMap[promptData[2]];
+    promptElement.classList.remove("fadeOutAnimation");
+    promptElement.classList.add("fadeInAnimation");
 
+    setTimeout(function() {
+        promptElement = document.getElementById('prompt');
+        promptElement.style.opacity = "0"
+        promptElement.classList.remove("fadeInAnimation");
+        promptElement.classList.add("fadeOutAnimation");
+
+        promptMessageQueue.splice(0, 1);
+
+        if (promptMessageQueue.length == 0) closePrompt();
+
+        setTimeout(() => {
+            promptElement.classList.remove("fadeOutAnimation");
+            if (promptMessageQueue.length > 0) loopAllPromptMessages();     
+        }, 500);
+    }, promptData[1]);
+}
+
+function closePrompt() {
+    promptElement = document.getElementById('prompt');
+    promptElement.classList.add("closeAnimation");
     setTimeout(function() {
         promptElement = document.getElementById('prompt');
         promptElement.style.display = "none";
         promptElement.classList.remove("closeAnimation");
     }, 1000)
+}
+
+function showButtons(panelId) {
+    panelElement = document.getElementById(panelId);
+    
+    panelElement.style.display = "block";
+    panelElement.style.height = "0px";
+    panelElement.classList.add("openButtonPanelAnimate");
+    setTimeout(() => {
+        panelElement = document.getElementById(panelId);
+
+        panelElement.style.height = "64px";
+        panelElement.classList.remove("openButtonPanelAnimate");
+
+        // get all buttons
+        buttons = panelElement.getElementsByTagName('button');
+
+        for (let i = 0; i < buttons.length; i++) {
+            let button = buttons[i];
+            button.classList.remove("hiddenButton");
+            button.classList.add("showButtonAnimation");
+        }
+
+        setTimeout(() => {
+            panelElement = document.getElementById(panelId);
+            buttons = panelElement.getElementsByTagName('button');
+
+            for (let i = 0; i < buttons.length; i++) {
+                let button = buttons[i];
+                button.classList.remove("showButtonAnimation");
+            }
+        }, 200);
+    }, 1000);
+}
+
+function hideButtons(panelId) {
+    panelElement = document.getElementById(panelId);
+    buttons = panelElement.getElementsByTagName('button');
+
+    for (let i = 0; i < buttons.length; i++) {
+        let button = buttons[i];
+        button.classList.add("hideButtonAnimation");
+    }
+
+    setTimeout(() => {
+        panelElement = document.getElementById(panelId);
+        buttons = panelElement.getElementsByTagName('button');
+
+        for (let i = 0; i < buttons.length; i++) {
+            let button = buttons[i];
+            button.classList.remove("hideButtonAnimation");
+            button.classList.add("hiddenButton");
+        }
+
+        panelElement.classList.add("closeButtonPanelAnimate");
+
+        setTimeout(() => {
+            panelElement = document.getElementById(panelId);
+
+            panelElement.style.display = "none";
+            panelElement.classList.remove("closeButtonPanelAnimate");
+        }, 1000);
+    }, 200);
+}
+
+function toggleTimeButtons() {
+    if (timeButtons == 0) {
+        showButtons('timeButtons');
+        timeButtons = 1;
+    } else {
+        hideButtons('timeButtons');
+        timeButtons = 0;
+    }
 }
 
 function receiveRPMS(websocket) {
@@ -228,14 +343,23 @@ function backToZero() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-    const websocket = new WebSocket(bikeServer)
+    try {
+        const websocket = new WebSocket(bikeServer);
+    }
+    catch (exception) {
+        showPrompt('Connection Error', 3000, 'alert');
+        const websocket = null;
+    }
 
     thisRider = getCookie('name');
 
     if (thisRider == false) {
         document.getElementById('getNameTile').style.display = "block";
     } else {
-        showPrompt('Hello '+ thisRider, 5000);
+        showPrompt('Hello '+ thisRider, 3000, 'normal');
+        window.addEventListener("focus", () => {
+            showPrompt('Hello '+ thisRider, 3000, 'normal');
+        });
     }
 
     rpmField = document.getElementById('rpms');
@@ -250,6 +374,15 @@ window.addEventListener("DOMContentLoaded", () => {
     arpmField.innerHTML = numberToStringFormatter(0, 1);
     amphField.innerHTML = numberToStringFormatter(0, 1);
 
-    setTimeout(function() {websocket.send("Hi!")}, 2000);
-    receiveRPMS(websocket);
+    if (websocket != null) {
+        setTimeout(function() {
+            try {
+                websocket.send("Hi!")
+            }
+            catch (exception) {
+                showPrompt('Connection Error', 3000, 'alert')
+            }
+        }, 2000);
+        receiveRPMS(websocket);
+    }
 });

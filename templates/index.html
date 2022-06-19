@@ -20,27 +20,31 @@
         </div>
         <div class="tile wide timetile">
             <h4>Time</h4>
-            <span id="time">00:00:00</span>
+            <span class="value" id="time" onclick="toggleTimeButtons()">00:00:00</span>
+            <span class="buttons" id="timeButtons">
+                <button id="reset" class="hiddenButton">Pause</button>
+                <button id="stop" class="hiddenButton">End</button>
+            </span>
         </div>
         <div class="tile wide timetile">
             <h4>Distance</h4>
-            <span id="miles">...</span>miles
+            <span class="value" id="miles">...</span>miles
         </div>
         <div class="tile">
             <h4>RPM</h4>
-            <span id="rpms">...</span>
+            <span class="value" id="rpms">...</span>
         </div>
         <div class="tile">
             <h4>MPH</h4>
-            <span id="mph">...</span>
+            <span class="value" id="mph">...</span>
         </div>
         <div class="tile">
             <h4>Avg RPM</h4>
-            <span id="arpm">...</span>
+            <span class="value" id="arpm">...</span>
         </div>
         <div class="tile">
             <h4>Avg MPH</h4>
-            <span id="amph">...</span>
+            <span class="value" id="amph">...</span>
         </div>
     </body>
 </html>
