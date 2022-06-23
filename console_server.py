@@ -13,6 +13,28 @@ cur.execute('CREATE TABLE IF NOT EXISTS rideHistory (id INTEGER PRIMARY KEY AUTO
 def root():
     return render_template('index.html')
 
+@app.route("/getHistory", methods=["POST"])
+def getHistory():
+    payload = json.loads(request.data)
+
+    # get the details for the last ride for the user
+    cur.execute('SELECT avgRpm, maxRpm, distanceMiles FROM rideHistory WHERE riderName = :riderName ORDER BY startTime DESC LIMIT 1', payload)
+    lastResult = cur.fetchall()
+
+    # get the historic total stats for the user
+    cur.execute('SELECT SUM(distanceMiles) as totalDistance FROM rideHistory WHERE riderName = :riderName', payload)
+    totalResult = cur.fetchall()
+
+    result = {
+        "status":"success",
+        "avgRpm":lastResult[0][0],
+        "maxRpm":lastResult[0][1],
+        "distanceMiles":lastResult[0][2],
+        "totalDistance":totalResult[0][0]
+    }
+
+    return json.dumps(result)
+
 @app.route("/rideUpdate", methods=["POST"])
 def rideUpdate():
     payload = json.loads(request.data)

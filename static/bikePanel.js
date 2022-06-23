@@ -377,6 +377,37 @@ function backToZero() {
     if (rpms > 0) backToZeroTime = setTimeout(backToZero, 40);
 }
 
+function loadHistory() {
+    let payload = {
+        "riderName":thisRider
+    }
+
+    Http.open("POST", "/getHistory");
+    Http.setRequestHeader("Content-Type", "application/json");
+    Http.onreadystatechange = function() {
+        if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
+            response = JSON.parse(Http.responseText);
+
+            if (response['status'] == 'success' && rideId == null) {
+                //fields to be updated
+                lastDistanceField = document.getElementById('lastdistance');
+                lastAvgRpmField = document.getElementById('lastrpm');
+                lastAvgMphField = document.getElementById('lastmph');
+                lastMaxRpmField = document.getElementById('lastpeakrpm');
+                totalDistanceField = document.getElementById('alldistance');
+
+                lastDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['distanceMiles']) + Number.EPSILON) * 100) / 100, 2);
+                lastAvgRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm']) + Number.EPSILON) * 10) / 10, 1);
+                lastAvgMphField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm'] / mphPerRpm) + Number.EPSILON) * 10) / 10, 1)
+                lastMaxRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['maxRpm']) + Number.EPSILON) * 10) / 10, 1);
+                totalDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['totalDistance']) + Number.EPSILON) * 100) / 100, 2);
+            }
+        }
+    }
+    Http.send(JSON.stringify(payload));
+
+}
+
 function socketConnect() {
     let websocket = new WebSocket(bikeServer);
     receiveRPMS(websocket);
@@ -406,6 +437,7 @@ window.addEventListener("DOMContentLoaded", () => {
         document.getElementById('getNameTile').style.display = "block";
     } else {
         showPrompt('Hello '+ thisRider, 3000, 'normal');
+        loadHistory();
     }
 
     rpmField = document.getElementById('rpms');
