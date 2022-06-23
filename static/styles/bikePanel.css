@@ -161,6 +161,12 @@ html {
     margin: -10px 0 0 0 ;
     font-family: 'LCDMono Light';
 }
+
+.tile h5 {
+    text-align: left;
+    
+}
+
 .tile.wide {
     width: 350px;
 }
@@ -201,6 +207,18 @@ html {
     margin:0;
     height:34px;
     opacity: 0;
+}
+
+.tile.statstile {
+    font-size: 16pt;
+    text-align: left;
+    
+}
+
+.tile .smallvalue {
+    text-align: right;
+    font-family: 'LCD Light';
+    display: inline-block;
 }
 
 button {

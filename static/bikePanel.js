@@ -9,15 +9,18 @@ let totalMs = 0;
 let timeButtons = 0;
 let promptTimeout = null;
 let promptMessageQueue = [];
+let rideId = null;
+let thisRider = null;
+
 const typeColorMap = {
     "normal":"#aec8a8",
     "alert":"#ec4d4d"
 };
-
 const historyLength = 20;
 const shortHistoryLength = 5;
 const mphPerRpm = 4.3;
 const bikeServer = "ws://minihome.dankurtz.local:8001/";
+const Http = new XMLHttpRequest();
 
 function getStandardDeviation (array) {
     const n = array.length
@@ -108,10 +111,37 @@ function tick() {
     timeString = hours + ":" + minutes + ":" + seconds;
     timeField = document.getElementById('time');
     timeField.innerHTML = timeString;
+
+    aRpm = totalRpms / totalMs
+
+    let payload = {
+        "id": rideId,
+        "riderName": thisRider,
+        "startTime": startTime,
+        "elapsedTime": elapsedTime,
+        "avgRpm": aRpm,
+        "maxRpm": 0,
+        "distanceMiles": miles
+    }
+
+    Http.open("POST", "/rideUpdate");
+    Http.setRequestHeader("Content-Type", "application/json");
+    Http.onreadystatechange = function() {
+        if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
+            response = JSON.parse(Http.responseText);
+
+            if (response['status'] == 'success' && rideId == null) {
+                rideId = response['rideId'];
+            }
+        }
+    }
+    Http.send(JSON.stringify(payload));
 }
 
 function showPrompt(message, duration, type) {
     promptData = [message,duration,type];
+
+    let skip = false;
 
     if (promptMessageQueue.length == 0) {
         promptElement = document.getElementById('prompt');
@@ -124,9 +154,14 @@ function showPrompt(message, duration, type) {
             promptElement = document.getElementById('prompt');
             promptElement.classList.remove("openAnimation");
         }, 1000)
+    } else {
+        if (promptMessageQueue.length > 0) {
+            for (let i in promptMessageQueue) {
+                if (promptMessageQueue[i][0] == promptData[0]) {skip = true;}
+            }
+        }
     }
-
-    promptMessageQueue.push(promptData);
+    if (skip == false) promptMessageQueue.push(promptData);
 }
 
 function loopAllPromptMessages() {
@@ -342,14 +377,28 @@ function backToZero() {
     if (rpms > 0) backToZeroTime = setTimeout(backToZero, 40);
 }
 
+function socketConnect() {
+    let websocket = new WebSocket(bikeServer);
+    receiveRPMS(websocket);
+    
+    websocket.addEventListener('open', (event) => {
+        websocket.send("Hi!");
+        showPrompt('Connected', 3000, 'normal');
+        connectionAttempts = 0
+    });
+
+    websocket.addEventListener('error', (event) => {
+        showPrompt('Connection Error', 1000, 'alert');
+    });
+
+    websocket.addEventListener('close', (event) => {
+        showPrompt('Disconnected', 1000, 'alert');
+        socketConnect();
+    });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
-    try {
-        const websocket = new WebSocket(bikeServer);
-    }
-    catch (exception) {
-        showPrompt('Connection Error', 3000, 'alert');
-        const websocket = null;
-    }
+    socketConnect();
 
     thisRider = getCookie('name');
 
@@ -357,9 +406,6 @@ window.addEventListener("DOMContentLoaded", () => {
         document.getElementById('getNameTile').style.display = "block";
     } else {
         showPrompt('Hello '+ thisRider, 3000, 'normal');
-        window.addEventListener("focus", () => {
-            showPrompt('Hello '+ thisRider, 3000, 'normal');
-        });
     }
 
     rpmField = document.getElementById('rpms');
@@ -373,16 +419,4 @@ window.addEventListener("DOMContentLoaded", () => {
     distanceField.innerHTML = numberToStringFormatter(0, 2);
     arpmField.innerHTML = numberToStringFormatter(0, 1);
     amphField.innerHTML = numberToStringFormatter(0, 1);
-
-    if (websocket != null) {
-        setTimeout(function() {
-            try {
-                websocket.send("Hi!")
-            }
-            catch (exception) {
-                showPrompt('Connection Error', 3000, 'alert')
-            }
-        }, 2000);
-        receiveRPMS(websocket);
-    }
 });
