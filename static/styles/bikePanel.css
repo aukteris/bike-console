@@ -211,14 +211,15 @@ html {
 
 .tile.statstile {
     font-size: 16pt;
-    text-align: left;
-    
+    text-align: unset;
+    padding-bottom: 10px;
 }
 
 .tile .smallvalue {
     text-align: right;
     font-family: 'LCD Light';
-    display: inline-block;
+    float: right;
+    margin-right:100px;
 }
 
 button {

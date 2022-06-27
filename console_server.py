@@ -40,6 +40,8 @@ def rideUpdate():
     payload = json.loads(request.data)
     id = None
 
+    payload['elapsedTime'] = round(payload['elapsedTime'] / 1000)
+
     if payload['id'] == None:
         cur.execute('INSERT INTO rideHistory (riderName, startTime, elapsedTimeSec, avgRpm, maxRpm, distanceMiles) VALUES (:riderName, :startTime, :elapsedTime, :avgRpm, :maxRpm, :distanceMiles)', payload)
         id = cur.lastrowid

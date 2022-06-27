@@ -6,6 +6,7 @@ let timeHistoryShort = [];
 let startTime = null;
 let totalRpms = 0;
 let totalMs = 0;
+let maxRpms = 0;
 let timeButtons = 0;
 let promptTimeout = null;
 let promptMessageQueue = [];
@@ -120,7 +121,7 @@ function tick() {
         "startTime": startTime,
         "elapsedTime": elapsedTime,
         "avgRpm": aRpm,
-        "maxRpm": 0,
+        "maxRpm": maxRpms,
         "distanceMiles": miles
     }
 
@@ -301,6 +302,8 @@ function receiveRPMS(websocket) {
             distanceField = document.getElementById('miles');
             arpmField = document.getElementById('arpm');
             amphField = document.getElementById('amph');
+            mrpmField = document.getElementById('mrpm');
+            mmphField = document.getElementById('mmph');
 
             // get rpms, store the history for standard deviation calcs
             rpm = parseFloat(payload['rpm']);
@@ -329,13 +332,18 @@ function receiveRPMS(websocket) {
                 timeHistoryShort.splice(0, 1);
             }
 
+            // add to totals used for calculating average rpm/mph
             totalRpms += rpm * elapsedMs;
             totalMs += elapsedMs;
+
+            // add to max mph
+            if (rpm > maxRpms) maxRpms = rpm;
 
             displayedRpm = rpmHistoryShort.length < shortHistoryLength ? rpm : w_avg(rpmHistoryShort, timeHistoryShort);
             displayedMph = timeHistoryShort.length < shortHistoryLength ? mph : displayedRpm / mphPerRpm;
             aRpm = totalRpms / totalMs;
             aMph = aRpm / mphPerRpm;
+            mMph = maxRpms / mphPerRpm;
 
             // format the fields for display
             rpmRounded = numberToStringFormatter(Math.round((displayedRpm + Number.EPSILON) * 10) / 10, 1);
@@ -343,22 +351,18 @@ function receiveRPMS(websocket) {
             milesRounded = numberToStringFormatter(Math.round((miles + Number.EPSILON) * 100) / 100, 2);
             arpmRounded = numberToStringFormatter(Math.round((aRpm + Number.EPSILON) * 10) / 10, 1);
             amphRounded = numberToStringFormatter(Math.round((aMph + Number.EPSILON) * 10) / 10, 1);
+            mrpmRounded = numberToStringFormatter(Math.round((maxRpm + Number.EPSILON) * 10) / 10, 1);
+            mmphRounded = numberToStringFormatter(Math.round((mMph + Number.EPSILON) * 10) / 10, 1);
 
-            /* for standard devation approached
-            lastIndex = rpmHistory.length - 2;
-            
-            if (rpmStdDev > 20 && rpm > rpmHistory[lastIndex]) {
-                console.log('Increase too high: suppressing');
-            } else {
-                rpmField.innerHTML = rpmRounded.toString();
-                mphField.innerHTML = mphRounded.toString();
-            }
-            */
+            // populate the fields values
             rpmField.innerHTML = rpmRounded;
             mphField.innerHTML = mphRounded;
             distanceField.innerHTML = milesRounded;
             arpmField.innerHTML = arpmRounded;
             amphField.innerHTML = amphRounded;
+            mrpmField.innerHTML = arpmRounded;
+            mmphField.innerHTML = amphRounded;
+
         }
     });
 }
@@ -396,11 +400,11 @@ function loadHistory() {
                 lastMaxRpmField = document.getElementById('lastpeakrpm');
                 totalDistanceField = document.getElementById('alldistance');
 
-                lastDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['distanceMiles']) + Number.EPSILON) * 100) / 100, 2);
+                lastDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['distanceMiles']) + Number.EPSILON) * 100) / 100, 2) +"mi";
                 lastAvgRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm']) + Number.EPSILON) * 10) / 10, 1);
                 lastAvgMphField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm'] / mphPerRpm) + Number.EPSILON) * 10) / 10, 1)
                 lastMaxRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['maxRpm']) + Number.EPSILON) * 10) / 10, 1);
-                totalDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['totalDistance']) + Number.EPSILON) * 100) / 100, 2);
+                totalDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['totalDistance']) + Number.EPSILON) * 100) / 100, 2) +"mi";
             }
         }
     }
@@ -415,7 +419,6 @@ function socketConnect() {
     websocket.addEventListener('open', (event) => {
         websocket.send("Hi!");
         showPrompt('Connected', 3000, 'normal');
-        connectionAttempts = 0
     });
 
     websocket.addEventListener('error', (event) => {
@@ -445,10 +448,14 @@ window.addEventListener("DOMContentLoaded", () => {
     distanceField = document.getElementById('miles');
     arpmField = document.getElementById('arpm');
     amphField = document.getElementById('amph');
+    mrpmField = document.getElementById('mrpm');
+    mmphField = document.getElementById('mmph');
 
     rpmField.innerHTML = numberToStringFormatter(0, 1);
     mphField.innerHTML = numberToStringFormatter(0, 1);
     distanceField.innerHTML = numberToStringFormatter(0, 2);
     arpmField.innerHTML = numberToStringFormatter(0, 1);
     amphField.innerHTML = numberToStringFormatter(0, 1);
+    mrpmField.innerHTML = numberToStringFormatter(0, 1);
+    mmphField.innerHTML = numberToStringFormatter(0, 1);
 });
