@@ -12,6 +12,11 @@ let promptTimeout = null;
 let promptMessageQueue = [];
 let rideId = null;
 let thisRider = null;
+let tickTimer = null;
+let excludedTime = 0;
+let paused = false;
+let pauseStartTime = null;
+let websocket = null;
 
 const typeColorMap = {
     "normal":"#aec8a8",
@@ -19,7 +24,7 @@ const typeColorMap = {
 };
 const historyLength = 20;
 const shortHistoryLength = 5;
-const mphPerRpm = 4.3;
+const mphPerRpm = 4.276315789473684;
 const bikeServer = "ws://minihome.dankurtz.local:8001/";
 const Http = new XMLHttpRequest();
 
@@ -94,49 +99,6 @@ function numberToStringFormatter(value, decimals) {
     }
 
     return stringValue
-}
-
-function tick() {
-    elapsedTime = Date.now() - startTime;
-
-    elapsedTimeDate = new Date(elapsedTime);
-
-    hours = elapsedTimeDate.getUTCHours().toString();
-    minutes = elapsedTimeDate.getUTCMinutes().toString();
-    seconds = elapsedTimeDate.getUTCSeconds().toString();
-
-    hours = hours.length == 1 ? "0" + hours : hours;
-    minutes = minutes.length == 1 ? "0" + minutes : minutes;
-    seconds = seconds.length == 1 ? "0" + seconds : seconds;
-
-    timeString = hours + ":" + minutes + ":" + seconds;
-    timeField = document.getElementById('time');
-    timeField.innerHTML = timeString;
-
-    aRpm = totalRpms / totalMs
-
-    let payload = {
-        "id": rideId,
-        "riderName": thisRider,
-        "startTime": startTime,
-        "elapsedTime": elapsedTime,
-        "avgRpm": aRpm,
-        "maxRpm": maxRpms,
-        "distanceMiles": miles
-    }
-
-    Http.open("POST", "/rideUpdate");
-    Http.setRequestHeader("Content-Type", "application/json");
-    Http.onreadystatechange = function() {
-        if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
-            response = JSON.parse(Http.responseText);
-
-            if (response['status'] == 'success' && rideId == null) {
-                rideId = response['rideId'];
-            }
-        }
-    }
-    Http.send(JSON.stringify(payload));
 }
 
 function showPrompt(message, duration, type) {
@@ -282,19 +244,24 @@ function receiveRPMS(websocket) {
 
     // rpm updates from the bake
     websocket.addEventListener("message", ({ data }) => {
-        if (data != "Hi!") {
+        if (data != "Hi!" && data != "Pause") {
+
+            if (paused == true) {
+                let pausedTime = Date.now() - pauseStartTime;
+                excludedTime = excludedTime + pausedTime;
+                pauseStartTime = null;
+                paused = false;        
+            }
 
             // start the timer if it is not already going
-            if (startTime == null) {
-                startTime = Date.now();
-                setInterval(tick, 200);
-            }
+            if (startTime == null) startTime = Date.now();
+            if (tickTimer == null) tickTimer = setInterval(tick, 200);
 
             payload = JSON.parse(data)
 
             // rolls mph and rpm fields back to zero if rpm updates stop
             clearTimeout(backToZeroTime);
-            backToZeroTime = setTimeout(backToZero, 2000);
+            backToZeroTime = setTimeout(pauseTime, 3000);
 
             // fields which need updating
             rpmField = document.getElementById('rpms');
@@ -361,11 +328,65 @@ function receiveRPMS(websocket) {
             distanceField.innerHTML = milesRounded;
             arpmField.innerHTML = arpmRounded;
             amphField.innerHTML = amphRounded;
-            mrpmField.innerHTML = arpmRounded;
-            mmphField.innerHTML = amphRounded;
+            mrpmField.innerHTML = mrpmRounded;
+            mmphField.innerHTML = mmphRounded;
 
         }
     });
+}
+
+function tick() {
+    elapsedTime = Date.now() - startTime - excludedTime;
+
+    elapsedTimeDate = new Date(elapsedTime);
+
+    hours = elapsedTimeDate.getUTCHours().toString();
+    minutes = elapsedTimeDate.getUTCMinutes().toString();
+    seconds = elapsedTimeDate.getUTCSeconds().toString();
+
+    hours = hours.length == 1 ? "0" + hours : hours;
+    minutes = minutes.length == 1 ? "0" + minutes : minutes;
+    seconds = seconds.length == 1 ? "0" + seconds : seconds;
+
+    timeString = hours + ":" + minutes + ":" + seconds;
+    timeField = document.getElementById('time');
+    timeField.innerHTML = timeString;
+
+    aRpm = totalRpms / totalMs
+
+    let payload = {
+        "id": rideId,
+        "riderName": thisRider,
+        "startTime": startTime,
+        "elapsedTime": elapsedTime,
+        "avgRpm": aRpm,
+        "maxRpm": maxRpms,
+
+        "distanceMiles": miles
+    }
+
+    Http.open("POST", "/rideUpdate");
+    Http.setRequestHeader("Content-Type", "application/json");
+    Http.onreadystatechange = function() {
+        if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
+            response = JSON.parse(Http.responseText);
+
+            if (response['status'] == 'success' && rideId == null) {
+                rideId = response['rideId'];
+            }
+        }
+    }
+    Http.send(JSON.stringify(payload));
+}
+
+function pauseTime() {
+    backToZero();
+    paused = true;
+    pauseStartTime = Date.now();
+    clearInterval(tickTimer);
+    tickTimer = null;
+
+    websocket.send("Pause");
 }
 
 function backToZero() {
@@ -381,7 +402,6 @@ function backToZero() {
     
     if (rpms > 0) backToZeroTime = setTimeout(backToZero, 40);
 }
-
 function loadHistory() {
     let payload = {
         "riderName":thisRider
@@ -414,7 +434,7 @@ function loadHistory() {
 }
 
 function socketConnect() {
-    let websocket = new WebSocket(bikeServer);
+    websocket = new WebSocket(bikeServer);
     receiveRPMS(websocket);
     
     websocket.addEventListener('open', (event) => {

@@ -38,9 +38,14 @@ async def handler(websocket):
     while True:
         try:
             message = await websocket.recv()
+            
             if message == "Hi!":
                 meter.connectedSocket = websocket
                 meter.lastReadTime = None
+
+            if message == "Pause":
+                meter.lastReadTime = None
+                
             await websocket.send(message)
         except websockets.ConnectionClosedOK:
             break
