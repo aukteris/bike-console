@@ -336,11 +336,12 @@ function receiveRPMS(websocket) {
             totalRpms += rpm * elapsedMs;
             totalMs += elapsedMs;
 
-            // add to max mph
-            if (rpm > maxRpms) maxRpms = rpm;
-
+            // smoothing the rpm to account for noise from the sensor
             displayedRpm = rpmHistoryShort.length < shortHistoryLength ? rpm : w_avg(rpmHistoryShort, timeHistoryShort);
             displayedMph = timeHistoryShort.length < shortHistoryLength ? mph : displayedRpm / mphPerRpm;
+
+            // add to max rpm
+            if (displayedRpm > maxRpms) maxRpms = displayedRpm;
             aRpm = totalRpms / totalMs;
             aMph = aRpm / mphPerRpm;
             mMph = maxRpms / mphPerRpm;
@@ -351,7 +352,7 @@ function receiveRPMS(websocket) {
             milesRounded = numberToStringFormatter(Math.round((miles + Number.EPSILON) * 100) / 100, 2);
             arpmRounded = numberToStringFormatter(Math.round((aRpm + Number.EPSILON) * 10) / 10, 1);
             amphRounded = numberToStringFormatter(Math.round((aMph + Number.EPSILON) * 10) / 10, 1);
-            mrpmRounded = numberToStringFormatter(Math.round((maxRpm + Number.EPSILON) * 10) / 10, 1);
+            mrpmRounded = numberToStringFormatter(Math.round((maxRpms + Number.EPSILON) * 10) / 10, 1);
             mmphRounded = numberToStringFormatter(Math.round((mMph + Number.EPSILON) * 10) / 10, 1);
 
             // populate the fields values

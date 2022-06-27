@@ -40,6 +40,7 @@ async def handler(websocket):
             message = await websocket.recv()
             if message == "Hi!":
                 meter.connectedSocket = websocket
+                meter.lastReadTime = None
             await websocket.send(message)
         except websockets.ConnectionClosedOK:
             break

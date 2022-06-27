@@ -1,6 +1,7 @@
 from flask import Flask, request, Response, redirect, url_for, render_template
 import sqlite3
 import json
+import atexit
 
 app = Flask(__name__)
 
@@ -58,3 +59,8 @@ def rideUpdate():
 
 if __name__ == "__main__":
     app.run()
+
+def exit_handler():
+    con.close()
+
+atexit.register(exit_handler)
