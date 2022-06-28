@@ -50,7 +50,7 @@ async def handler(websocket):
             if data['action'] == "Pause":
                 meter.lastReadTime = None
 
-            await websocket.send(message)
+            await websocket.send(data['action'])
         except websockets.ConnectionClosedOK:
             break
         except websockets.ConnectionClosedError:
