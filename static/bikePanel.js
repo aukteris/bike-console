@@ -258,7 +258,7 @@ function receiveRPMS(websocket) {
 
     // rpm updates from the bake
     websocket.addEventListener("message", ({ data }) => {
-        if (data != "Hi!" && data != "Pause") {
+        if (data != "Hi!" && data != "Pause" && data != "Connect") {
 
             if (paused == true) {
                 let pausedTime = Date.now() - pauseStartTime;
@@ -391,7 +391,12 @@ function pauseTime() {
     clearInterval(tickTimer);
     tickTimer = null;
 
-    websocket.send("Pause");
+    let payload = {
+        "action":"Pause",
+        "rideId":rideId
+    }
+
+    websocket.send(JSON.stringify(payload));
 }
 
 function backToZero() {
@@ -446,7 +451,11 @@ function socketConnect() {
     receiveRPMS(websocket);
     
     websocket.addEventListener('open', (event) => {
-        websocket.send("Hi!");
+        let payload = {
+            "action":"Connect",
+            "rideId":rideId
+        }
+        websocket.send(JSON.stringify(payload));
         showPrompt('Connected', 3000, 'normal');
     });
 

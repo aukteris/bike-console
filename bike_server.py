@@ -38,12 +38,16 @@ async def handler(websocket):
     while True:
         try:
             message = await websocket.recv()
-            
-            if message == "Hi!":
-                meter.connectedSocket = websocket
-                meter.lastReadTime = None
 
-            if message == "Pause":
+            data = json.loads(message)
+            
+            if data['action'] == "Connect":
+                meter.connectedSocket = websocket
+                
+                if data['rideId'] == None:
+                    meter.lastReadTime = None
+
+            if data['action'] == "Pause":
                 meter.lastReadTime = None
 
             await websocket.send(message)
