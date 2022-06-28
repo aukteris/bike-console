@@ -19,7 +19,7 @@ def getHistory():
     payload = json.loads(request.data)
 
     # get the details for the last ride for the user
-    cur.execute('SELECT avgRpm, maxRpm, distanceMiles FROM rideHistory WHERE riderName = :riderName ORDER BY startTime DESC LIMIT 1', payload)
+    cur.execute('SELECT avgRpm, maxRpm, distanceMiles, elapsedTimeSec FROM rideHistory WHERE riderName = :riderName ORDER BY startTime DESC LIMIT 1', payload)
     lastResult = cur.fetchall()
 
     # get the historic total stats for the user
@@ -31,6 +31,7 @@ def getHistory():
         "avgRpm":lastResult[0][0],
         "maxRpm":lastResult[0][1],
         "distanceMiles":lastResult[0][2],
+        "elapsedTimeSec":lastResult[0][3],
         "totalDistance":totalResult[0][0]
     }
 

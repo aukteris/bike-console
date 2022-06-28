@@ -70,10 +70,10 @@ function w_avg(values, counts) {
 }
 
 function saveName() {
-    ridername = document.getElementById('name').value
+    thisRider = document.getElementById('name').value
 
     if (ridername.length > 0) {
-        setCookie('name', ridername, 2100);
+        setCookie('name', thisRider, 2100);
         document.getElementById('getNameTile').style.display = "none";
     } else {
         alert('Please enter a name');
@@ -99,6 +99,20 @@ function numberToStringFormatter(value, decimals) {
     }
 
     return stringValue
+}
+
+function timeStringFormater(dateForFormat) {
+    let hours = dateForFormat.getUTCHours().toString();
+    let minutes = dateForFormat.getUTCMinutes().toString();
+    let seconds = dateForFormat.getUTCSeconds().toString();
+
+    hours = hours.length == 1 ? "0" + hours : hours;
+    minutes = minutes.length == 1 ? "0" + minutes : minutes;
+    seconds = seconds.length == 1 ? "0" + seconds : seconds;
+
+    let timeString = hours + ":" + minutes + ":" + seconds;
+
+    return timeString;
 }
 
 function showPrompt(message, duration, type) {
@@ -250,7 +264,7 @@ function receiveRPMS(websocket) {
                 let pausedTime = Date.now() - pauseStartTime;
                 excludedTime = excludedTime + pausedTime;
                 pauseStartTime = null;
-                paused = false;        
+                paused = false;
             }
 
             // start the timer if it is not already going
@@ -261,7 +275,7 @@ function receiveRPMS(websocket) {
 
             // rolls mph and rpm fields back to zero if rpm updates stop
             clearTimeout(backToZeroTime);
-            backToZeroTime = setTimeout(pauseTime, 3000);
+            backToZeroTime = setTimeout(pauseTime, 2000);
 
             // fields which need updating
             rpmField = document.getElementById('rpms');
@@ -340,17 +354,8 @@ function tick() {
 
     elapsedTimeDate = new Date(elapsedTime);
 
-    hours = elapsedTimeDate.getUTCHours().toString();
-    minutes = elapsedTimeDate.getUTCMinutes().toString();
-    seconds = elapsedTimeDate.getUTCSeconds().toString();
-
-    hours = hours.length == 1 ? "0" + hours : hours;
-    minutes = minutes.length == 1 ? "0" + minutes : minutes;
-    seconds = seconds.length == 1 ? "0" + seconds : seconds;
-
-    timeString = hours + ":" + minutes + ":" + seconds;
     timeField = document.getElementById('time');
-    timeField.innerHTML = timeString;
+    timeField.innerHTML = timeStringFormater(elapsedTimeDate);
 
     aRpm = totalRpms / totalMs
 
@@ -402,6 +407,7 @@ function backToZero() {
     
     if (rpms > 0) backToZeroTime = setTimeout(backToZero, 40);
 }
+
 function loadHistory() {
     let payload = {
         "riderName":thisRider
@@ -415,12 +421,14 @@ function loadHistory() {
 
             if (response['status'] == 'success' && rideId == null) {
                 //fields to be updated
+                lastTimeField = document.getElementById('lasttime');
                 lastDistanceField = document.getElementById('lastdistance');
                 lastAvgRpmField = document.getElementById('lastrpm');
                 lastAvgMphField = document.getElementById('lastmph');
                 lastMaxRpmField = document.getElementById('lastpeakrpm');
                 totalDistanceField = document.getElementById('alldistance');
 
+                lastTimeField.innerHTML = timeStringFormater(new Date(parseInt(response['elapsedTimeSec']) * 1000));
                 lastDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['distanceMiles']) + Number.EPSILON) * 100) / 100, 2) +"mi";
                 lastAvgRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm']) + Number.EPSILON) * 10) / 10, 1);
                 lastAvgMphField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm'] / mphPerRpm) + Number.EPSILON) * 10) / 10, 1)
