@@ -258,7 +258,9 @@ function receiveRPMS(websocket) {
 
     // rpm updates from the bake
     websocket.addEventListener("message", ({ data }) => {
-        if (data != "Hi!" && data != "Pause" && data != "Connect") {
+        payload = JSON.parse(data)
+
+        if (payload == "Rotate") {
 
             if (paused == true) {
                 let pausedTime = Date.now() - pauseStartTime;
@@ -270,8 +272,6 @@ function receiveRPMS(websocket) {
             // start the timer if it is not already going
             if (startTime == null) startTime = Date.now();
             if (tickTimer == null) tickTimer = setInterval(tick, 200);
-
-            payload = JSON.parse(data)
 
             // rolls mph and rpm fields back to zero if rpm updates stop
             clearTimeout(backToZeroTime);

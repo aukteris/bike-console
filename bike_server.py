@@ -22,6 +22,7 @@ class rpm_meter:
             rpm = 60 / (timediffsec * 4)
 
             data = {
+                "action":"Rotate",
                 "rpm": rpm,
                 "time_diff_sec": timediffsec
             }
@@ -38,19 +39,19 @@ async def handler(websocket):
     while True:
         try:
             message = await websocket.recv()
-
-            data = json.loads(message)
             
-            if data['action'] == "Connect":
+            payload = json.loads(message)
+
+            if payload['action'] == "Connect":
                 meter.connectedSocket = websocket
                 
-                if data['rideId'] == None:
+                if payload['rideId'] == None:
                     meter.lastReadTime = None
 
-            if data['action'] == "Pause":
+            if payload['action'] == "Pause":
                 meter.lastReadTime = None
 
-            await websocket.send(data['action'])
+            await websocket.send(message)
         except websockets.ConnectionClosedOK:
             break
         except websockets.ConnectionClosedError:
