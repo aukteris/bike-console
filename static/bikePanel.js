@@ -1,22 +1,5 @@
-let backToZeroTime = null;
-let miles = 0;
-let rpmHistory = [];
-let rpmHistoryShort = [];
-let timeHistoryShort = [];
-let startTime = null;
-let totalRpms = 0;
-let totalMs = 0;
-let maxRpms = 0;
 let timeButtons = 0;
-let promptTimeout = null;
-let promptMessageQueue = [];
-let rideId = null;
-let thisRider = null;
-let tickTimer = null;
-let excludedTime = 0;
-let paused = false;
-let pauseStartTime = null;
-let websocket = null;
+let thisRide = null;
 
 const typeColorMap = {
     "normal":"#aec8a8",
@@ -27,6 +10,295 @@ const shortHistoryLength = 5;
 const mphPerRpm = 4.276315789473684;
 const bikeServer = "ws://minihome.dankurtz.local:8001/";
 const Http = new XMLHttpRequest();
+
+//control for the message prompt
+class promptControl {
+    constructor() {
+        this.promptTimeout = null;
+        this.promptMessageQueue = [];
+    }
+
+    showPrompt(message, duration, type) {
+        let promptData = [message,duration,type];
+    
+        let skip = false;
+    
+        if (this.promptMessageQueue.length == 0) {
+            let promptElement = document.getElementById('prompt');
+    
+            promptElement.style.display = "block";
+            promptElement.classList.add("openAnimation");
+    
+            this.promptTimeout = setTimeout(function(){this.loopAllPromptMessages() }.bind(this), 500);
+            setTimeout(() => {
+                let promptElement = document.getElementById('prompt');
+                promptElement.classList.remove("openAnimation");
+            }, 1000)
+        } else {
+            if (this.promptMessageQueue.length > 0) {
+                for (let i in this.promptMessageQueue) {
+                    if (this.promptMessageQueue[i][0] == promptData[0]) {skip = true;}
+                }
+            }
+        }
+        if (skip == false) this.promptMessageQueue.push(promptData);
+    }
+
+    loopAllPromptMessages() {
+
+        let promptData = this.promptMessageQueue[0];
+    
+        let promptElement = document.getElementById('prompt');
+    
+        promptElement.innerHTML = promptData[0]
+        promptElement.style.opacity = "100";
+        promptElement.style.color = typeColorMap[promptData[2]];
+        promptElement.classList.remove("fadeOutAnimation");
+        promptElement.classList.add("fadeInAnimation");
+    
+        setTimeout(function() {
+            let promptElement = document.getElementById('prompt');
+            promptElement.style.opacity = "0"
+            promptElement.classList.remove("fadeInAnimation");
+            promptElement.classList.add("fadeOutAnimation");
+    
+            this.promptMessageQueue.splice(0, 1);
+    
+            if (this.promptMessageQueue.length == 0) this.closePrompt();
+    
+            setTimeout(function() {
+                promptElement.classList.remove("fadeOutAnimation");
+                if (this.promptMessageQueue.length > 0) this.loopAllPromptMessages();     
+            }.bind(this), 500);
+        }.bind(this), promptData[1]);
+    }
+
+    closePrompt() {
+        let promptElement = document.getElementById('prompt');
+        promptElement.classList.add("closeAnimation");
+        setTimeout(function() {
+            promptElement = document.getElementById('prompt');
+            promptElement.style.display = "none";
+            promptElement.classList.remove("closeAnimation");
+        }, 1000)
+    }
+}
+const messagePrompt = new promptControl();
+
+class rideControl {
+    constructor(rider) {
+        this.backToZeroTime = null;
+        this.miles = 0;
+        this.rpmHistory = [];
+        this.rpmHistoryShort = [];
+        this.timeHistoryShort = [];
+        this.startTime = null;
+        this.totalRpms = 0;
+        this.totalMs = 0;
+        this.maxRpms = 0;
+        this.rideId = null;
+        this.thisRider = rider;
+        this.tickTimer = null;
+        this.excludedTime = 0;
+        this.paused = false;
+        this.pauseStartTime = null;
+        this.websocket = null;
+
+        this.historyLength = 20;
+        this.shortHistoryLength = 5;
+        this.mphPerRpm = 4.276315789473684;
+
+        this.rpmField = document.getElementById('rpms');
+        this.mphField = document.getElementById('mph');
+        this.distanceField = document.getElementById('miles');
+        this.arpmField = document.getElementById('arpm');
+        this.amphField = document.getElementById('amph');
+        this.mrpmField = document.getElementById('mrpm');
+        this.mmphField = document.getElementById('mmph');
+        this.timeField = document.getElementById('time');
+
+        this.socketConnect();
+    }
+
+    socketConnect() {
+        this.websocket = new WebSocket(bikeServer);
+        this.receiveRPMS();
+        
+        this.websocket.addEventListener('open', (event) => {
+            let payload = {
+                "action":"Connect",
+                "rideId":this.rideId
+            }
+            this.websocket.send(JSON.stringify(payload));
+            messagePrompt.showPrompt('Connected', 3000, 'normal');
+        });
+    
+        this.websocket.addEventListener('error', (event) => {
+            messagePrompt.showPrompt('Connection Error', 1000, 'alert');
+        });
+    
+        this.websocket.addEventListener('close', (event) => {
+            messagePrompt.showPrompt('Disconnected', 1000, 'alert');
+            this.socketConnect();
+        });
+    }
+
+    saveName() {
+        this.thisRider = document.getElementById('name').value
+    
+        if (this.thisRider.length > 0) {
+            setCookie('name', this.thisRider, 2100);
+            document.getElementById('getNameTile').style.display = "none";
+            loadHistory(this.thisRider);
+        } else {
+            alert('Please enter a name');
+        }
+    }
+
+    receiveRPMS() {
+        console.log('Loaded...');
+    
+        // rpm updates from the bike
+        this.websocket.addEventListener("message", ({ data }) => {
+            let payload = JSON.parse(data)
+    
+            if (payload['action'] == "Rotate") {
+    
+                if (paused == true) {
+                    let pausedTime = Date.now() - this.pauseStartTime;
+                    this.excludedTime = this.excludedTime + pausedTime;
+                    this.pauseStartTime = null;
+                    this.paused = false;
+                }
+    
+                // start the timer if it is not already going
+                if (this.startTime == null) this.startTime = Date.now();
+                if (this.tickTimer == null) this.tickTimer = setInterval(function() {this.tick()}.bind(this), 200);
+    
+                // rolls mph and rpm fields back to zero if rpm updates stop
+                clearTimeout(this.backToZeroTime);
+                this.backToZeroTime = setTimeout(function() {this.pauseTime()}.bind(this), 2000);
+    
+                // get rpms, store the history for standard deviation calcs
+                let rpm = parseFloat(payload['rpm']);
+                this.rpmHistory.push(rpm);
+                if (this.rpmHistory.length > this.historyLength) this.rpmHistory.splice(0, 1);
+    
+                // determine mph from rpm
+                let mph = rpm / this.mphPerRpm;
+    
+                // get the time duration for the last update in secs and ms
+                let elapsedSec = parseFloat(payload['time_diff_sec']);
+                let elapsedMs = elapsedSec * 1000;
+    
+                // determine distance traveled based on time and mph, add to total distance traveled
+                let netDistance = mph * (elapsedSec / 60 / 60);
+                if (netDistance > 0) this.miles = this.miles + netDistance;
+    
+                // add time and rpm to the short history, determine rpm weighted average based on short history
+                this.rpmHistoryShort.push(rpm);
+                this.timeHistoryShort.push(elapsedMs);
+    
+                if (this.rpmHistoryShort.length > this.shortHistoryLength) {
+                    this.rpmHistoryShort.splice(0, 1);
+                    this.timeHistoryShort.splice(0, 1);
+                }
+    
+                // add to totals used for calculating average rpm/mph
+                this.totalRpms += rpm * elapsedMs;
+                this.totalMs += elapsedMs;
+    
+                // smoothing the rpm to account for noise from the sensor
+                let displayedRpm = this.rpmHistoryShort.length < this.shortHistoryLength ? rpm : w_avg(this.rpmHistoryShort, this.timeHistoryShort);
+                let displayedMph = this.timeHistoryShort.length < this.shortHistoryLength ? mph : displayedRpm / this.mphPerRpm;
+    
+                // add to max rpm
+                if (displayedRpm > this.maxRpms) this.maxRpms = displayedRpm;
+                let aRpm = this.totalRpms / this.totalMs;
+                let aMph = aRpm / this.mphPerRpm;
+                let mMph = this.maxRpms / this.mphPerRpm;
+    
+                // format the fields for display
+                let rpmRounded = numberToStringFormatter(Math.round((displayedRpm + Number.EPSILON) * 10) / 10, 1);
+                let mphRounded = numberToStringFormatter(Math.round((displayedMph + Number.EPSILON) * 10) / 10, 1);
+                let milesRounded = numberToStringFormatter(Math.round((this.miles + Number.EPSILON) * 100) / 100, 2);
+                let arpmRounded = numberToStringFormatter(Math.round((aRpm + Number.EPSILON) * 10) / 10, 1);
+                let amphRounded = numberToStringFormatter(Math.round((aMph + Number.EPSILON) * 10) / 10, 1);
+                let mrpmRounded = numberToStringFormatter(Math.round((this.maxRpms + Number.EPSILON) * 10) / 10, 1);
+                let mmphRounded = numberToStringFormatter(Math.round((mMph + Number.EPSILON) * 10) / 10, 1);
+    
+                // populate the fields values
+                this.rpmField.innerHTML = rpmRounded;
+                this.mphField.innerHTML = mphRounded;
+                this.distanceField.innerHTML = milesRounded;
+                this.arpmField.innerHTML = arpmRounded;
+                this.amphField.innerHTML = amphRounded;
+                this.mrpmField.innerHTML = mrpmRounded;
+                this.mmphField.innerHTML = mmphRounded;
+    
+            }
+        });
+    }
+    
+    tick() {
+        let elapsedTime = Date.now() - this.startTime - this.excludedTime;
+    
+        let elapsedTimeDate = new Date(elapsedTime);
+        
+        this.timeField.innerHTML = timeStringFormater(elapsedTimeDate);
+    
+        let aRpm = this.totalRpms / this.totalMs
+    
+        let payload = {
+            "id": this.rideId,
+            "riderName": this.thisRider,
+            "startTime": this.startTime,
+            "elapsedTime": elapsedTime,
+            "avgRpm": aRpm,
+            "maxRpm": this.maxRpms,    
+            "distanceMiles": this.miles
+        }
+    
+        Http.open("POST", "/rideUpdate");
+        Http.setRequestHeader("Content-Type", "application/json");
+        Http.onreadystatechange = function() {
+            if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
+                let response = JSON.parse(Http.responseText);
+    
+                if (response['status'] == 'success' && this.rideId == null) {
+                    this.rideId = response['rideId'];
+                }
+            }
+        }.bind(this)
+        Http.send(JSON.stringify(payload));
+    }
+    
+    pauseTime() {
+        this.backToZero();
+        this.paused = true;
+        this.pauseStartTime = Date.now();
+        clearInterval(this.tickTimer);
+        this.tickTimer = null;
+    
+        let payload = {
+            "action":"Pause",
+            "rideId":this.rideId
+        }
+    
+        this.websocket.send(JSON.stringify(payload));
+    }
+    
+    backToZero() {    
+        let rpms = Math.round(parseFloat(rpmField.innerHTML));
+        rpms -= 2;
+        let mph = Math.round(rpms / mphPerRpm);
+    
+        this.rpmField.innerHTML = numberToStringFormatter(rpms < 0 ? 0 : rpms.toString(), 1);
+        this.mphField.innerHTML = numberToStringFormatter(mph < 0 ? 0 : mph.toString(), 1);
+        
+        if (rpms > 0) this.backToZeroTime = setTimeout(function() {this.backToZero()}.bind(this), 40);
+    }
+}
 
 function getStandardDeviation (array) {
     const n = array.length
@@ -69,17 +341,6 @@ function w_avg(values, counts) {
     return totalproduct / totalcount;
 }
 
-function saveName() {
-    thisRider = document.getElementById('name').value
-
-    if (ridername.length > 0) {
-        setCookie('name', thisRider, 2100);
-        document.getElementById('getNameTile').style.display = "none";
-    } else {
-        alert('Please enter a name');
-    }
-}
-
 function numberToStringFormatter(value, decimals) {
     stringValue = value.toString();
 
@@ -113,71 +374,6 @@ function timeStringFormater(dateForFormat) {
     let timeString = hours + ":" + minutes + ":" + seconds;
 
     return timeString;
-}
-
-function showPrompt(message, duration, type) {
-    promptData = [message,duration,type];
-
-    let skip = false;
-
-    if (promptMessageQueue.length == 0) {
-        promptElement = document.getElementById('prompt');
-
-        promptElement.style.display = "block";
-        promptElement.classList.add("openAnimation");
-
-        promptTimeout = setTimeout(loopAllPromptMessages, 500);
-        setTimeout(() => {
-            promptElement = document.getElementById('prompt');
-            promptElement.classList.remove("openAnimation");
-        }, 1000)
-    } else {
-        if (promptMessageQueue.length > 0) {
-            for (let i in promptMessageQueue) {
-                if (promptMessageQueue[i][0] == promptData[0]) {skip = true;}
-            }
-        }
-    }
-    if (skip == false) promptMessageQueue.push(promptData);
-}
-
-function loopAllPromptMessages() {
-
-    promptData = promptMessageQueue[0];
-
-    promptElement = document.getElementById('prompt');
-
-    promptElement.innerHTML = promptData[0]
-    promptElement.style.opacity = "100";
-    promptElement.style.color = typeColorMap[promptData[2]];
-    promptElement.classList.remove("fadeOutAnimation");
-    promptElement.classList.add("fadeInAnimation");
-
-    setTimeout(function() {
-        promptElement = document.getElementById('prompt');
-        promptElement.style.opacity = "0"
-        promptElement.classList.remove("fadeInAnimation");
-        promptElement.classList.add("fadeOutAnimation");
-
-        promptMessageQueue.splice(0, 1);
-
-        if (promptMessageQueue.length == 0) closePrompt();
-
-        setTimeout(() => {
-            promptElement.classList.remove("fadeOutAnimation");
-            if (promptMessageQueue.length > 0) loopAllPromptMessages();     
-        }, 500);
-    }, promptData[1]);
-}
-
-function closePrompt() {
-    promptElement = document.getElementById('prompt');
-    promptElement.classList.add("closeAnimation");
-    setTimeout(function() {
-        promptElement = document.getElementById('prompt');
-        promptElement.style.display = "none";
-        promptElement.classList.remove("closeAnimation");
-    }, 1000)
 }
 
 function showButtons(panelId) {
@@ -253,169 +449,9 @@ function toggleTimeButtons() {
     }
 }
 
-function receiveRPMS(websocket) {
-    console.log('Loaded...');
-
-    // rpm updates from the bake
-    websocket.addEventListener("message", ({ data }) => {
-        payload = JSON.parse(data)
-
-        if (payload == "Rotate") {
-
-            if (paused == true) {
-                let pausedTime = Date.now() - pauseStartTime;
-                excludedTime = excludedTime + pausedTime;
-                pauseStartTime = null;
-                paused = false;
-            }
-
-            // start the timer if it is not already going
-            if (startTime == null) startTime = Date.now();
-            if (tickTimer == null) tickTimer = setInterval(tick, 200);
-
-            // rolls mph and rpm fields back to zero if rpm updates stop
-            clearTimeout(backToZeroTime);
-            backToZeroTime = setTimeout(pauseTime, 2000);
-
-            // fields which need updating
-            rpmField = document.getElementById('rpms');
-            mphField = document.getElementById('mph');
-            distanceField = document.getElementById('miles');
-            arpmField = document.getElementById('arpm');
-            amphField = document.getElementById('amph');
-            mrpmField = document.getElementById('mrpm');
-            mmphField = document.getElementById('mmph');
-
-            // get rpms, store the history for standard deviation calcs
-            rpm = parseFloat(payload['rpm']);
-            rpmHistory.push(rpm);
-            if (rpmHistory.length > historyLength) rpmHistory.splice(0, 1);
-            rpmStdDev = getStandardDeviation(rpmHistory);
-            //console.log(rpm.toString() + ";" + rpmStdDev.toString());
-
-            // determine mph from rpm
-            mph = rpm / mphPerRpm;
-
-            // get the time duration for the last update in secs and ms
-            elapsedSec = parseFloat(payload['time_diff_sec']);
-            elapsedMs = elapsedSec * 1000;
-
-            // determine distance traveled based on time and mph, add to total distance traveled
-            netDistance = mph * (elapsedSec / 60 / 60);
-            if (netDistance > 0) miles = miles + netDistance;
-
-            // add time and rpm to the short history, determine rpm weighted average based on short history
-            rpmHistoryShort.push(rpm);
-            timeHistoryShort.push(elapsedMs);
-
-            if (rpmHistoryShort.length > shortHistoryLength) {
-                rpmHistoryShort.splice(0, 1);
-                timeHistoryShort.splice(0, 1);
-            }
-
-            // add to totals used for calculating average rpm/mph
-            totalRpms += rpm * elapsedMs;
-            totalMs += elapsedMs;
-
-            // smoothing the rpm to account for noise from the sensor
-            displayedRpm = rpmHistoryShort.length < shortHistoryLength ? rpm : w_avg(rpmHistoryShort, timeHistoryShort);
-            displayedMph = timeHistoryShort.length < shortHistoryLength ? mph : displayedRpm / mphPerRpm;
-
-            // add to max rpm
-            if (displayedRpm > maxRpms) maxRpms = displayedRpm;
-            aRpm = totalRpms / totalMs;
-            aMph = aRpm / mphPerRpm;
-            mMph = maxRpms / mphPerRpm;
-
-            // format the fields for display
-            rpmRounded = numberToStringFormatter(Math.round((displayedRpm + Number.EPSILON) * 10) / 10, 1);
-            mphRounded = numberToStringFormatter(Math.round((displayedMph + Number.EPSILON) * 10) / 10, 1);
-            milesRounded = numberToStringFormatter(Math.round((miles + Number.EPSILON) * 100) / 100, 2);
-            arpmRounded = numberToStringFormatter(Math.round((aRpm + Number.EPSILON) * 10) / 10, 1);
-            amphRounded = numberToStringFormatter(Math.round((aMph + Number.EPSILON) * 10) / 10, 1);
-            mrpmRounded = numberToStringFormatter(Math.round((maxRpms + Number.EPSILON) * 10) / 10, 1);
-            mmphRounded = numberToStringFormatter(Math.round((mMph + Number.EPSILON) * 10) / 10, 1);
-
-            // populate the fields values
-            rpmField.innerHTML = rpmRounded;
-            mphField.innerHTML = mphRounded;
-            distanceField.innerHTML = milesRounded;
-            arpmField.innerHTML = arpmRounded;
-            amphField.innerHTML = amphRounded;
-            mrpmField.innerHTML = mrpmRounded;
-            mmphField.innerHTML = mmphRounded;
-
-        }
-    });
-}
-
-function tick() {
-    elapsedTime = Date.now() - startTime - excludedTime;
-
-    elapsedTimeDate = new Date(elapsedTime);
-
-    timeField = document.getElementById('time');
-    timeField.innerHTML = timeStringFormater(elapsedTimeDate);
-
-    aRpm = totalRpms / totalMs
-
+function loadHistory(riderName) {
     let payload = {
-        "id": rideId,
-        "riderName": thisRider,
-        "startTime": startTime,
-        "elapsedTime": elapsedTime,
-        "avgRpm": aRpm,
-        "maxRpm": maxRpms,
-
-        "distanceMiles": miles
-    }
-
-    Http.open("POST", "/rideUpdate");
-    Http.setRequestHeader("Content-Type", "application/json");
-    Http.onreadystatechange = function() {
-        if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
-            response = JSON.parse(Http.responseText);
-
-            if (response['status'] == 'success' && rideId == null) {
-                rideId = response['rideId'];
-            }
-        }
-    }
-    Http.send(JSON.stringify(payload));
-}
-
-function pauseTime() {
-    backToZero();
-    paused = true;
-    pauseStartTime = Date.now();
-    clearInterval(tickTimer);
-    tickTimer = null;
-
-    let payload = {
-        "action":"Pause",
-        "rideId":rideId
-    }
-
-    websocket.send(JSON.stringify(payload));
-}
-
-function backToZero() {
-    rpmField = document.getElementById('rpms');
-    mphField = document.getElementById('mph');
-
-    rpms = Math.round(parseFloat(rpmField.innerHTML));
-    rpms -= 2;
-    mph = Math.round(rpms / mphPerRpm);
-
-    rpmField.innerHTML = numberToStringFormatter(rpms < 0 ? 0 : rpms.toString(), 1);
-    mphField.innerHTML = numberToStringFormatter(mph < 0 ? 0 : mph.toString(), 1);
-    
-    if (rpms > 0) backToZeroTime = setTimeout(backToZero, 40);
-}
-
-function loadHistory() {
-    let payload = {
-        "riderName":thisRider
+        "riderName":riderName
     }
 
     Http.open("POST", "/getHistory");
@@ -424,7 +460,7 @@ function loadHistory() {
         if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
             response = JSON.parse(Http.responseText);
 
-            if (response['status'] == 'success' && rideId == null) {
+            if (response['status'] == 'success' && thisRide.rideId == null) {
                 //fields to be updated
                 lastTimeField = document.getElementById('lasttime');
                 lastDistanceField = document.getElementById('lastdistance');
@@ -436,7 +472,7 @@ function loadHistory() {
                 lastTimeField.innerHTML = timeStringFormater(new Date(parseInt(response['elapsedTimeSec']) * 1000));
                 lastDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['distanceMiles']) + Number.EPSILON) * 100) / 100, 2) +"mi";
                 lastAvgRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm']) + Number.EPSILON) * 10) / 10, 1);
-                lastAvgMphField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm'] / mphPerRpm) + Number.EPSILON) * 10) / 10, 1)
+                lastAvgMphField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm'] / thisRide.mphPerRpm) + Number.EPSILON) * 10) / 10, 1)
                 lastMaxRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['maxRpm']) + Number.EPSILON) * 10) / 10, 1);
                 totalDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['totalDistance']) + Number.EPSILON) * 100) / 100, 2) +"mi";
             }
@@ -446,39 +482,17 @@ function loadHistory() {
 
 }
 
-function socketConnect() {
-    websocket = new WebSocket(bikeServer);
-    receiveRPMS(websocket);
-    
-    websocket.addEventListener('open', (event) => {
-        let payload = {
-            "action":"Connect",
-            "rideId":rideId
-        }
-        websocket.send(JSON.stringify(payload));
-        showPrompt('Connected', 3000, 'normal');
-    });
-
-    websocket.addEventListener('error', (event) => {
-        showPrompt('Connection Error', 1000, 'alert');
-    });
-
-    websocket.addEventListener('close', (event) => {
-        showPrompt('Disconnected', 1000, 'alert');
-        socketConnect();
-    });
-}
-
 window.addEventListener("DOMContentLoaded", () => {
-    socketConnect();
 
-    thisRider = getCookie('name');
+    thisRide = new rideControl(getCookie('name'));
 
-    if (thisRider == false) {
+    thisRide.thisRider = getCookie('name');
+
+    if (thisRide.thisRider == false) {
         document.getElementById('getNameTile').style.display = "block";
     } else {
-        showPrompt('Hello '+ thisRider, 3000, 'normal');
-        loadHistory();
+        messagePrompt.showPrompt('Hello '+ thisRide.thisRider, 3000, 'normal');
+        loadHistory(thisRide.thisRider);
     }
 
     rpmField = document.getElementById('rpms');
