@@ -164,7 +164,7 @@ class rideControl {
     
             if (payload['action'] == "Rotate") {
     
-                if (paused == true) {
+                if (this.paused == true) {
                     let pausedTime = Date.now() - this.pauseStartTime;
                     this.excludedTime = this.excludedTime + pausedTime;
                     this.pauseStartTime = null;
@@ -298,12 +298,6 @@ class rideControl {
         
         if (rpms > 0) this.backToZeroTime = setTimeout(function() {this.backToZero()}.bind(this), 40);
     }
-}
-
-function getStandardDeviation (array) {
-    const n = array.length
-    const mean = array.reduce((a, b) => a + b) / n
-    return Math.sqrt(array.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / n)
 }
 
 function setCookie(cname, cvalue, exdays) {
