@@ -87,6 +87,9 @@ const messagePrompt = new promptControl();
 
 class rideControl {
     constructor(rider) {
+        this.thisRider = rider;
+        this.websocket = null;
+
         this.backToZeroTime = null;
         this.miles = 0;
         this.rpmHistory = [];
@@ -97,12 +100,10 @@ class rideControl {
         this.totalMs = 0;
         this.maxRpms = 0;
         this.rideId = null;
-        this.thisRider = rider;
         this.tickTimer = null;
         this.excludedTime = 0;
         this.paused = false;
         this.pauseStartTime = null;
-        this.websocket = null;
 
         this.historyLength = 20;
         this.shortHistoryLength = 5;
@@ -143,10 +144,41 @@ class rideControl {
         });
     }
 
+    resetRide() {
+        this.backToZeroTime = null;
+        this.miles = 0;
+        this.rpmHistory = [];
+        this.rpmHistoryShort = [];
+        this.timeHistoryShort = [];
+        this.startTime = null;
+        this.totalRpms = 0;
+        this.totalMs = 0;
+        this.maxRpms = 0;
+        this.rideId = null;
+        this.tickTimer = null;
+        this.excludedTime = 0;
+        this.paused = false;
+        this.pauseStartTime = null;
+
+        this.timeField.innerHTML = timeStringFormater(new Date(0));
+        this.rpmField.innerHTML = numberToStringFormatter(0, 1);
+        this.mphField.innerHTML = numberToStringFormatter(0, 1);
+        this.distanceField.innerHTML = numberToStringFormatter(0, 2);
+        this.arpmField.innerHTML = numberToStringFormatter(0, 1);
+        this.amphField.innerHTML = numberToStringFormatter(0, 1);
+        this.mrpmField.innerHTML = numberToStringFormatter(0, 1);
+        this.mmphField.innerHTML = numberToStringFormatter(0, 1);
+
+        if (this.thisRider != false) {
+            loadHistory(this.thisRider);
+        }
+    }
+
     saveName() {
-        this.thisRider = document.getElementById('name').value
+        let assessRiderName = document.getElementById('name').value;
     
-        if (this.thisRider.length > 0) {
+        if (assessRiderName.length > 0) {
+            this.thisRider = assessRiderName;
             setCookie('name', this.thisRider, 2100);
             document.getElementById('getNameTile').style.display = "none";
             loadHistory(this.thisRider);
@@ -473,35 +505,17 @@ function loadHistory(riderName) {
         }
     }
     Http.send(JSON.stringify(payload));
-
 }
 
 window.addEventListener("DOMContentLoaded", () => {
 
     thisRide = new rideControl(getCookie('name'));
 
-    thisRide.thisRider = getCookie('name');
-
     if (thisRide.thisRider == false) {
         document.getElementById('getNameTile').style.display = "block";
     } else {
         messagePrompt.showPrompt('Hello '+ thisRide.thisRider, 3000, 'normal');
-        loadHistory(thisRide.thisRider);
     }
 
-    rpmField = document.getElementById('rpms');
-    mphField = document.getElementById('mph');
-    distanceField = document.getElementById('miles');
-    arpmField = document.getElementById('arpm');
-    amphField = document.getElementById('amph');
-    mrpmField = document.getElementById('mrpm');
-    mmphField = document.getElementById('mmph');
-
-    rpmField.innerHTML = numberToStringFormatter(0, 1);
-    mphField.innerHTML = numberToStringFormatter(0, 1);
-    distanceField.innerHTML = numberToStringFormatter(0, 2);
-    arpmField.innerHTML = numberToStringFormatter(0, 1);
-    amphField.innerHTML = numberToStringFormatter(0, 1);
-    mrpmField.innerHTML = numberToStringFormatter(0, 1);
-    mmphField.innerHTML = numberToStringFormatter(0, 1);
+    thisRide.resetRide();
 });

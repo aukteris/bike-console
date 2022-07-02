@@ -8,6 +8,7 @@ class rpm_meter:
     def __init__(self):
         self.lastReadTime = None
         self.connectedSocket = None
+        self.connectedRiders = {}
 
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(7, GPIO.OUT)
@@ -27,7 +28,8 @@ class rpm_meter:
                 "time_diff_sec": timediffsec
             }
             
-            asyncio.run(self.connectedSocket.send(json.dumps(data)))
+            if self.connectedSocket != None:
+                asyncio.run(self.connectedSocket.send(json.dumps(data)))
             
         self.lastReadTime = datetime.now()
 
@@ -42,7 +44,7 @@ async def handler(websocket):
             
             payload = json.loads(message)
 
-            if payload['action'] == "Connect":
+            if payload['action'] == "Connect":                
                 meter.connectedSocket = websocket
                 
                 if payload['rideId'] == None:
@@ -53,8 +55,12 @@ async def handler(websocket):
 
             await websocket.send(message)
         except websockets.ConnectionClosedOK:
+            if meter.connectedSocket == websocket:
+                meter.connectedSocket = None
             break
         except websockets.ConnectionClosedError:
+            if meter.connectedSocket == websocket:
+                meter.connectedSocket = None
             break
 
         print(message) 
