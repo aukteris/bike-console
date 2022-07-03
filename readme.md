@@ -2,6 +2,8 @@
 
 # Smart Bike Console
 
+[![Console Screen Shot][console-screenshot]](https://github.com/aukteris/bike-console/blob/master/interface.png?raw=true)
+
 ## About
 
 This is a console app designed to work with a Schwinn IC3 exercise bike. I felt the bike console you can get for the bike didn't show enough statistics or capture history, so I designed this as a DIY alternative.
