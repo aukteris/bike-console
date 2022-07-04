@@ -14,3 +14,16 @@ It consists of 2 parts:
 2. A console server which hosts a web app client that connects to the bike server via websockets.
 
 The console runs in a browser and is iOS web app compatible. The client is designed to be used in mobile web browsers (specifically iPhone 13). It does not prevent screen auto-lock so you must manually disable this setting on the phone while the app is in use. (Note: Native iOS app planned to address this in the long term).
+
+## Current Features
+* Auto-start and auto-pause stop watch
+* Distance in miles
+* Current, Average, and Maximum RPM and MPH
+* Stats for last session and all time
+* Supports multiple users
+
+## Planned Features
+* Real-time charts for RPM, MPH
+* RPM target meter
+* Workout history management
+* Native iOS app, Healthkit integration
