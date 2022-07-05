@@ -278,7 +278,7 @@ class rideControl {
                     this.mmphField.innerHTML = mmphRounded;
 
                 case "Response":
-                    switch(payload['lastAction']) {
+                    switch(payload['requestAction']) {
                         case "Connect":
                             if (payload['status'] == "Primary-Client") {
                                 messagePrompt.showPrompt('Connected', 3000, 'normal');
@@ -343,9 +343,9 @@ class rideControl {
     }
     
     backToZero() {    
-        let rpms = Math.round(parseFloat(rpmField.innerHTML));
+        let rpms = Math.round(parseFloat(this.rpmField.innerHTML));
         rpms -= 2;
-        let mph = Math.round(rpms / mphPerRpm);
+        let mph = Math.round(rpms / this.mphPerRpm);
     
         this.rpmField.innerHTML = numberToStringFormatter(rpms < 0 ? 0 : rpms.toString(), 1);
         this.mphField.innerHTML = numberToStringFormatter(mph < 0 ? 0 : mph.toString(), 1);
