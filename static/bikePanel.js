@@ -141,7 +141,6 @@ class rideControl {
                 "rideId":this.rideId
             }
             this.websocket.send(JSON.stringify(payload));
-            messagePrompt.showPrompt('Connected', 3000, 'normal');
         });
     
         this.websocket.addEventListener('error', (event) => {
@@ -203,82 +202,95 @@ class rideControl {
         // rpm updates from the bike
         this.websocket.addEventListener("message", ({ data }) => {
             let payload = JSON.parse(data)
-    
-            if (payload['action'] == "Rotate") {
-    
-                if (this.paused == true) {
-                    let pausedTime = Date.now() - this.pauseStartTime;
-                    this.excludedTime = this.excludedTime + pausedTime;
-                    this.pauseStartTime = null;
-                    this.paused = false;
-                }
-    
-                // start the timer if it is not already going
-                if (this.startTime == null) this.startTime = Date.now();
-                if (this.tickTimer == null) this.tickTimer = setInterval(function() {this.tick()}.bind(this), 200);
-    
-                // rolls mph and rpm fields back to zero if rpm updates stop
-                clearTimeout(this.backToZeroTime);
-                this.backToZeroTime = setTimeout(function() {this.pauseTime()}.bind(this), 2000);
-    
-                // get rpms, store the history for standard deviation calcs
-                let rpm = parseFloat(payload['rpm']);
-                this.rpmHistory.push(rpm);
-                if (this.rpmHistory.length > this.historyLength) this.rpmHistory.splice(0, 1);
-    
-                // determine mph from rpm
-                let mph = rpm / this.mphPerRpm;
-    
-                // get the time duration for the last update in secs and ms
-                let elapsedSec = parseFloat(payload['time_diff_sec']);
-                let elapsedMs = elapsedSec * 1000;
-    
-                // determine distance traveled based on time and mph, add to total distance traveled
-                let netDistance = mph * (elapsedSec / 60 / 60);
-                if (netDistance > 0) this.miles = this.miles + netDistance;
-    
-                // add time and rpm to the short history, determine rpm weighted average based on short history
-                this.rpmHistoryShort.push(rpm);
-                this.timeHistoryShort.push(elapsedMs);
-    
-                if (this.rpmHistoryShort.length > this.shortHistoryLength) {
-                    this.rpmHistoryShort.splice(0, 1);
-                    this.timeHistoryShort.splice(0, 1);
-                }
-    
-                // add to totals used for calculating average rpm/mph
-                this.totalRpms += rpm * elapsedMs;
-                this.totalMs += elapsedMs;
-    
-                // smoothing the rpm to account for noise from the sensor
-                let displayedRpm = this.rpmHistoryShort.length < this.shortHistoryLength ? rpm : w_avg(this.rpmHistoryShort, this.timeHistoryShort);
-                let displayedMph = this.timeHistoryShort.length < this.shortHistoryLength ? mph : displayedRpm / this.mphPerRpm;
-    
-                // add to max rpm
-                if (displayedRpm > this.maxRpms) this.maxRpms = displayedRpm;
-                let aRpm = this.totalRpms / this.totalMs;
-                let aMph = aRpm / this.mphPerRpm;
-                let mMph = this.maxRpms / this.mphPerRpm;
-    
-                // format the fields for display
-                let rpmRounded = numberToStringFormatter(Math.round((displayedRpm + Number.EPSILON) * 10) / 10, 1);
-                let mphRounded = numberToStringFormatter(Math.round((displayedMph + Number.EPSILON) * 10) / 10, 1);
-                let milesRounded = numberToStringFormatter(Math.round((this.miles + Number.EPSILON) * 100) / 100, 2);
-                let arpmRounded = numberToStringFormatter(Math.round((aRpm + Number.EPSILON) * 10) / 10, 1);
-                let amphRounded = numberToStringFormatter(Math.round((aMph + Number.EPSILON) * 10) / 10, 1);
-                let mrpmRounded = numberToStringFormatter(Math.round((this.maxRpms + Number.EPSILON) * 10) / 10, 1);
-                let mmphRounded = numberToStringFormatter(Math.round((mMph + Number.EPSILON) * 10) / 10, 1);
-    
-                // populate the fields values
-                this.rpmField.innerHTML = rpmRounded;
-                this.mphField.innerHTML = mphRounded;
-                this.distanceField.innerHTML = milesRounded;
-                this.arpmField.innerHTML = arpmRounded;
-                this.amphField.innerHTML = amphRounded;
-                this.mrpmField.innerHTML = mrpmRounded;
-                this.mmphField.innerHTML = mmphRounded;
-    
+
+            switch(payload['action']) {
+                case "Rotate":
+                    if (this.paused == true) {
+                        let pausedTime = Date.now() - this.pauseStartTime;
+                        this.excludedTime = this.excludedTime + pausedTime;
+                        this.pauseStartTime = null;
+                        this.paused = false;
+                    }
+        
+                    // start the timer if it is not already going
+                    if (this.startTime == null) this.startTime = Date.now();
+                    if (this.tickTimer == null) this.tickTimer = setInterval(function() {this.tick()}.bind(this), 200);
+        
+                    // rolls mph and rpm fields back to zero if rpm updates stop
+                    clearTimeout(this.backToZeroTime);
+                    this.backToZeroTime = setTimeout(function() {this.pauseTime()}.bind(this), 2000);
+        
+                    // get rpms, store the history for standard deviation calcs
+                    let rpm = parseFloat(payload['rpm']);
+                    this.rpmHistory.push(rpm);
+                    if (this.rpmHistory.length > this.historyLength) this.rpmHistory.splice(0, 1);
+        
+                    // determine mph from rpm
+                    let mph = rpm / this.mphPerRpm;
+        
+                    // get the time duration for the last update in secs and ms
+                    let elapsedSec = parseFloat(payload['time_diff_sec']);
+                    let elapsedMs = elapsedSec * 1000;
+        
+                    // determine distance traveled based on time and mph, add to total distance traveled
+                    let netDistance = mph * (elapsedSec / 60 / 60);
+                    if (netDistance > 0) this.miles = this.miles + netDistance;
+        
+                    // add time and rpm to the short history, determine rpm weighted average based on short history
+                    this.rpmHistoryShort.push(rpm);
+                    this.timeHistoryShort.push(elapsedMs);
+        
+                    if (this.rpmHistoryShort.length > this.shortHistoryLength) {
+                        this.rpmHistoryShort.splice(0, 1);
+                        this.timeHistoryShort.splice(0, 1);
+                    }
+        
+                    // add to totals used for calculating average rpm/mph
+                    this.totalRpms += rpm * elapsedMs;
+                    this.totalMs += elapsedMs;
+        
+                    // smoothing the rpm to account for noise from the sensor
+                    let displayedRpm = this.rpmHistoryShort.length < this.shortHistoryLength ? rpm : w_avg(this.rpmHistoryShort, this.timeHistoryShort);
+                    let displayedMph = this.timeHistoryShort.length < this.shortHistoryLength ? mph : displayedRpm / this.mphPerRpm;
+        
+                    // add to max rpm
+                    if (displayedRpm > this.maxRpms) this.maxRpms = displayedRpm;
+                    let aRpm = this.totalRpms / this.totalMs;
+                    let aMph = aRpm / this.mphPerRpm;
+                    let mMph = this.maxRpms / this.mphPerRpm;
+        
+                    // format the fields for display
+                    let rpmRounded = numberToStringFormatter(Math.round((displayedRpm + Number.EPSILON) * 10) / 10, 1);
+                    let mphRounded = numberToStringFormatter(Math.round((displayedMph + Number.EPSILON) * 10) / 10, 1);
+                    let milesRounded = numberToStringFormatter(Math.round((this.miles + Number.EPSILON) * 100) / 100, 2);
+                    let arpmRounded = numberToStringFormatter(Math.round((aRpm + Number.EPSILON) * 10) / 10, 1);
+                    let amphRounded = numberToStringFormatter(Math.round((aMph + Number.EPSILON) * 10) / 10, 1);
+                    let mrpmRounded = numberToStringFormatter(Math.round((this.maxRpms + Number.EPSILON) * 10) / 10, 1);
+                    let mmphRounded = numberToStringFormatter(Math.round((mMph + Number.EPSILON) * 10) / 10, 1);
+        
+                    // populate the fields values
+                    this.rpmField.innerHTML = rpmRounded;
+                    this.mphField.innerHTML = mphRounded;
+                    this.distanceField.innerHTML = milesRounded;
+                    this.arpmField.innerHTML = arpmRounded;
+                    this.amphField.innerHTML = amphRounded;
+                    this.mrpmField.innerHTML = mrpmRounded;
+                    this.mmphField.innerHTML = mmphRounded;
+
+                case "Response":
+                    switch(payload['lastAction']) {
+                        case "Connect":
+                            if (payload['status'] == "Primary-Client") {
+                                messagePrompt.showPrompt('Connected', 3000, 'normal');
+                            } else {
+                                messagePrompt.showPrompt('Non-primary Client', 3000, 'alert');
+                            }
+
+                        case "Pause":
+                            if (payload['status'] == "Not-primary") messagePrompt.showPrompt('Non-primary Client', 3000, 'alert');
+                    }
             }
+    
         });
     }
     
