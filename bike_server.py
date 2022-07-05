@@ -47,13 +47,13 @@ async def handler(websocket):
     while True:
         try:
             message = await websocket.recv()
-
+ 
+            payload = json.loads(message)
             response = {
                 "action":"Response",
                 "status": None,
                 "requestAction":payload['action']
-            }            
-            payload = json.loads(message)
+            }           
 
             if payload['action'] == "Connect":
                 if meter.connectedSocket == None:
