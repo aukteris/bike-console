@@ -3,6 +3,7 @@ import RPi.GPIO as GPIO
 import json
 import asyncio
 import websockets
+import socket
 
 class rpm_meter:
     def __init__(self):
@@ -67,7 +68,7 @@ async def handler(websocket):
  
  
 async def main(): 
-    async with websockets.serve(handler, "minihome.dankurtz.local", 8001): 
+    async with websockets.serve(handler, socket.gethostname(), 8001): 
         await asyncio.Future()  # run forever 
 
 if __name__ == "__main__": 
