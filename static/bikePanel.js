@@ -5,10 +5,6 @@ const typeColorMap = {
     "normal":"#aec8a8",
     "alert":"#ec4d4d"
 };
-const historyLength = 20;
-const shortHistoryLength = 5;
-const mphPerRpm = 4.276315789473684;
-const bikeServer = "ws://minihome.dankurtz.local:8001/";
 const Http = new XMLHttpRequest();
 
 //control for the message prompt
@@ -88,6 +84,7 @@ const messagePrompt = new promptControl();
 class rideControl {
     constructor(rider) {
         this.thisRider = rider;
+        this.bikeServer = "ws://minihome.dankurtz.local:8001/";
         this.websocket = null;
 
         this.backToZeroTime = null;
@@ -117,12 +114,25 @@ class rideControl {
         this.mrpmField = document.getElementById('mrpm');
         this.mmphField = document.getElementById('mmph');
         this.timeField = document.getElementById('time');
+        this.lastTimeField = document.getElementById('lasttime');
+        this.lastDistanceField = document.getElementById('lastdistance');
+        this.lastAvgRpmField = document.getElementById('lastrpm');
+        this.lastAvgMphField = document.getElementById('lastmph');
+        this.lastMaxRpmField = document.getElementById('lastpeakrpm');
+        this.totalDistanceField = document.getElementById('alldistance');
+
+        // ask for the rider name if one does not exist
+        if (this.thisRider == false) {
+            document.getElementById('getNameTile').style.display = "block";
+        } else {
+            messagePrompt.showPrompt('Hello '+ this.thisRider, 3000, 'normal');
+        }
 
         this.socketConnect();
     }
 
     socketConnect() {
-        this.websocket = new WebSocket(bikeServer);
+        this.websocket = new WebSocket(this.bikeServer);
         this.receiveRPMS();
         
         this.websocket.addEventListener('open', (event) => {
@@ -170,7 +180,7 @@ class rideControl {
         this.mmphField.innerHTML = numberToStringFormatter(0, 1);
 
         if (this.thisRider != false) {
-            loadHistory(this.thisRider);
+            this.loadHistory();
         }
     }
 
@@ -181,7 +191,7 @@ class rideControl {
             this.thisRider = assessRiderName;
             setCookie('name', this.thisRider, 2100);
             document.getElementById('getNameTile').style.display = "none";
-            loadHistory(this.thisRider);
+            this.loadHistory();
         } else {
             alert('Please enter a name');
         }
@@ -330,6 +340,30 @@ class rideControl {
         
         if (rpms > 0) this.backToZeroTime = setTimeout(function() {this.backToZero()}.bind(this), 40);
     }
+
+    loadHistory() {
+        let payload = {
+            "riderName":this.thisRider
+        }
+    
+        Http.open("POST", "/getHistory");
+        Http.setRequestHeader("Content-Type", "application/json");
+        Http.onreadystatechange = function() {
+            if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
+                let response = JSON.parse(Http.responseText);
+    
+                if (response['status'] == 'success' && this.rideId == null) {
+                    this.lastTimeField.innerHTML = timeStringFormater(new Date(parseInt(response['elapsedTimeSec']) * 1000));
+                    this.lastDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['distanceMiles']) + Number.EPSILON) * 100) / 100, 2) +"mi";
+                    this.lastAvgRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm']) + Number.EPSILON) * 10) / 10, 1);
+                    this.lastAvgMphField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm'] / this.mphPerRpm) + Number.EPSILON) * 10) / 10, 1)
+                    this.lastMaxRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['maxRpm']) + Number.EPSILON) * 10) / 10, 1);
+                    this.totalDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['totalDistance']) + Number.EPSILON) * 100) / 100, 2) +"mi";
+                }
+            }
+        }.bind(this);
+        Http.send(JSON.stringify(payload));
+    }
 }
 
 function setCookie(cname, cvalue, exdays) {
@@ -475,47 +509,7 @@ function toggleTimeButtons() {
     }
 }
 
-function loadHistory(riderName) {
-    let payload = {
-        "riderName":riderName
-    }
-
-    Http.open("POST", "/getHistory");
-    Http.setRequestHeader("Content-Type", "application/json");
-    Http.onreadystatechange = function() {
-        if (Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
-            response = JSON.parse(Http.responseText);
-
-            if (response['status'] == 'success' && thisRide.rideId == null) {
-                //fields to be updated
-                lastTimeField = document.getElementById('lasttime');
-                lastDistanceField = document.getElementById('lastdistance');
-                lastAvgRpmField = document.getElementById('lastrpm');
-                lastAvgMphField = document.getElementById('lastmph');
-                lastMaxRpmField = document.getElementById('lastpeakrpm');
-                totalDistanceField = document.getElementById('alldistance');
-
-                lastTimeField.innerHTML = timeStringFormater(new Date(parseInt(response['elapsedTimeSec']) * 1000));
-                lastDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['distanceMiles']) + Number.EPSILON) * 100) / 100, 2) +"mi";
-                lastAvgRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm']) + Number.EPSILON) * 10) / 10, 1);
-                lastAvgMphField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['avgRpm'] / thisRide.mphPerRpm) + Number.EPSILON) * 10) / 10, 1)
-                lastMaxRpmField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['maxRpm']) + Number.EPSILON) * 10) / 10, 1);
-                totalDistanceField.innerHTML = numberToStringFormatter(Math.round((parseFloat(response['totalDistance']) + Number.EPSILON) * 100) / 100, 2) +"mi";
-            }
-        }
-    }
-    Http.send(JSON.stringify(payload));
-}
-
 window.addEventListener("DOMContentLoaded", () => {
-
     thisRide = new rideControl(getCookie('name'));
-
-    if (thisRide.thisRider == false) {
-        document.getElementById('getNameTile').style.display = "block";
-    } else {
-        messagePrompt.showPrompt('Hello '+ thisRide.thisRider, 3000, 'normal');
-    }
-
     thisRide.resetRide();
 });
