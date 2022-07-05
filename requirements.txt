@@ -2,3 +2,4 @@ gunicorn
 flask
 greenlet
 gevent
+python-daemon

@@ -4,6 +4,7 @@ import json
 import asyncio
 import websockets
 import socket
+import daemon
 
 class rpm_meter:
     def __init__(self):
@@ -12,8 +13,10 @@ class rpm_meter:
         self.connectedRiders = {}
 
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(7, GPIO.OUT)
+        # Send a charge through the sensor to ensure a signal
+        GPIO.setup(7, GPIO.OUT) 
         GPIO.output(7, 1)
+        # listen for when the signal reactivates (the sensor works by connecting the circut once per wheel rotation)
         GPIO.setup(7, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     def rev_cb(self, channel):
@@ -21,6 +24,7 @@ class rpm_meter:
             timediff = datetime.now() - self.lastReadTime
             timediffsec = timediff.total_seconds()
 
+            # 4 wheel rotations = 1 pedal rotation
             rpm = 60 / (timediffsec * 4)
 
             data = {
@@ -45,8 +49,9 @@ async def handler(websocket):
             
             payload = json.loads(message)
 
-            if payload['action'] == "Connect":                
-                meter.connectedSocket = websocket
+            if payload['action'] == "Connect":
+                if meter.connectedSocket == None:
+                    meter.connectedSocket = websocket
                 
                 if payload['rideId'] == None:
                     meter.lastReadTime = None
@@ -71,5 +76,6 @@ async def main():
     async with websockets.serve(handler, socket.gethostname(), 8001): 
         await asyncio.Future()  # run forever 
 
-if __name__ == "__main__": 
+with daemon.DaemonContext():
+    #if __name__ == "__main__": 
     asyncio.run(main())
