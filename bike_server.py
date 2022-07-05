@@ -76,6 +76,6 @@ async def main():
     async with websockets.serve(handler, socket.gethostname(), 8001): 
         await asyncio.Future()  # run forever 
 
-with daemon.DaemonContext():
-    #if __name__ == "__main__": 
+#with daemon.DaemonContext():
+if __name__ == "__main__": 
     asyncio.run(main())
