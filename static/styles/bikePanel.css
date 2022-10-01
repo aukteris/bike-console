@@ -139,9 +139,28 @@ html {
     font-family: 'LCDMono Ultra' 
 }
 
+@media only screen and (min-width: 200px) and (orientation: portrait) {
+    .tile {
+        width: 37%;
+    }
+
+    .tile.wide {
+        width: 88%;
+    }
+}
+
+@media only screen and (min-width: 200px) and (orientation: landscape) {
+    .tile {
+        width: 19%;
+    }
+
+    .tile.wide {
+        width: 44%;
+    }
+}
+
 .tile {
     float: left;
-    width: 151px;
     height: auto;
     font-size: 4em;
     color: #aec8a8;
@@ -167,9 +186,6 @@ html {
     
 }
 
-.tile.wide {
-    width: 350px;
-}
 
 .tile.timetile {
     text-align: center;
